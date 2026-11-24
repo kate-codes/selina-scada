@@ -27,17 +27,19 @@ const LabeledSliderField: React.FC<LabeledSliderFieldProps> = ({ label, value, o
                     onChange={(_, newValue) => onChange(newValue as number)}
                     sx={{ flex: 1 }}
                 />
-                <TextField
-                    type="number"
-                    size="small"
-                    value={value}
-                    onChange={(event) => {
-                        const parsed = Number(event.target.value)
-                        if (!Number.isNaN(parsed)) onChange(parsed)
-                    }}
-                    inputProps={{ min, max, step }}
-                    sx={{ width: 96 }}
-                />
+                {value > min && (
+                    <TextField
+                        type="number"
+                        size="small"
+                        value={value}
+                        onChange={(event) => {
+                            const parsed = Number(event.target.value)
+                            if (!Number.isNaN(parsed)) onChange(parsed)
+                        }}
+                        inputProps={{ min, max, step }}
+                        sx={{ width: 96 }}
+                    />
+                )}
             </Box>
         </Box>
     )

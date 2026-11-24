@@ -53,6 +53,9 @@ const UnitNode: React.FC<UnitNodeProps> = ({ data, selected, onEdit, onDelete })
                 p: 1.5,
                 borderColor: selected ? 'secondary.main' : 'divider',
                 boxShadow: selected ? 4 : 1,
+                // MUI Card defaults to overflow: hidden, which clips roughly half of each
+                // port handle's hit area since they sit centered on the card's edge.
+                overflow: 'visible',
             }}
         >
             {ANCHOR_POSITIONS.map((anchor) => (

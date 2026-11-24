@@ -14,7 +14,7 @@ export const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 }
 export const MIN_ZOOM = 0.25
 export const MAX_ZOOM = 2
 
-export const CONNECTION_RADIUS = 24
+export const CONNECTION_RADIUS = 32
 
 export const UNIT_TYPE_LABELS: Record<'ioProcess' | 'storage', string> = {
     ioProcess: 'I/O Process Unit',

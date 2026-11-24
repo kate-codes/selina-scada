@@ -1,17 +1,8 @@
 import React, { useEffect, useMemo } from 'react'
-import {
-    Background,
-    ConnectionMode,
-    Controls,
-    MarkerType,
-    NodeProps,
-    ReactFlow,
-    useEdgesState,
-    useNodesState,
-} from '@xyflow/react'
+import { Background, ConnectionMode, Controls, NodeProps, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react'
 import '@xyflow/react/dist/base.css'
 import './gmsCanvas.css'
-import { ANCHOR_POSITIONS, CONNECTION_RADIUS, EDGE_IDLE_COLOR, MAX_ZOOM, MIN_ZOOM } from '../constants'
+import { ANCHOR_POSITIONS, CONNECTION_RADIUS, MAX_ZOOM, MIN_ZOOM } from '../constants'
 import { ConnectionFlowEdge, UnitFlowNode } from '../flowSync/flowTypes'
 import { mergeConnectionsIntoFlowEdges, toFlowEdges } from '../flowSync/toFlowEdges'
 import { mergeUnitsIntoFlowNodes, toFlowNodes } from '../flowSync/toFlowNodes'
@@ -105,10 +96,7 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({ onEditUnit, onEdgeClick, onOpenIm
             connectionMode={ConnectionMode.Loose}
             connectionRadius={CONNECTION_RADIUS}
             connectionLineComponent={CustomConnectionLine}
-            defaultEdgeOptions={{
-                type: 'connection',
-                markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: EDGE_IDLE_COLOR },
-            }}
+            defaultEdgeOptions={{ type: 'connection' }}
             defaultViewport={gms.viewSettings.viewport}
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}

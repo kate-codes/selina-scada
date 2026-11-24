@@ -8,11 +8,29 @@
     opacity: 1;
 }
 
-.gms-port-handle:hover,
-.gms-port-handle.connectingfrom,
-.gms-port-handle.connectingto,
-.gms-port-handle.valid {
+.gms-port-handle-dot {
+    transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+/* A soft halo on the full (larger) hit area gives a draw.io-style grab affordance
+   before the cursor is precisely on the small dot. */
+.gms-port-handle:hover::before,
+.gms-port-handle.connectingfrom::before,
+.gms-port-handle.connectingto::before,
+.gms-port-handle.valid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(179, 136, 255, 0.18);
+}
+
+.gms-port-handle:hover .gms-port-handle-dot,
+.gms-port-handle.connectingfrom .gms-port-handle-dot,
+.gms-port-handle.connectingto .gms-port-handle-dot,
+.gms-port-handle.valid .gms-port-handle-dot {
     background: #b388ff !important;
+    transform: scale(1.3);
 }
 
 .gms-edge-label {
