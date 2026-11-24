@@ -1,13 +1,12 @@
 import { createTheme } from '@mui/material/styles'
-import { GRADIENT_PRIMARY, GRADIENT_SECONDARY } from '../constants'
 
 export const theme = createTheme({
     palette: {
         primary: {
-            main: GRADIENT_PRIMARY,
+            main: '#667eea',
         },
         secondary: {
-            main: GRADIENT_SECONDARY,
+            main: '#764ba2',
         },
     },
     typography: {

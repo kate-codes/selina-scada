@@ -1,0 +1,31 @@
+.react-flow__node-unit .gms-port-handle {
+    opacity: 0;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.react-flow__node-unit:hover .gms-port-handle,
+.react-flow__node-unit.selected .gms-port-handle {
+    opacity: 1;
+}
+
+.gms-port-handle:hover,
+.gms-port-handle.connectingfrom,
+.gms-port-handle.connectingto,
+.gms-port-handle.valid {
+    background: #b388ff !important;
+}
+
+.gms-edge-label {
+    pointer-events: none;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #424242;
+    white-space: nowrap;
+    /* Sits in the same overlay layer as node cards; without this it can render
+       underneath a nearby unit when two units are placed close together. */
+    z-index: 1000;
+}
