@@ -28,6 +28,7 @@ const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ onClose }) => {
         setErrors([])
         dispatch({ type: 'schema/replace', schema: result.schema })
         setViewport(result.schema.viewSettings.viewport)
+        onClose()
     }
 
     async function handleCopy() {

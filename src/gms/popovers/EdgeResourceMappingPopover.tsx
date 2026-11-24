@@ -1,5 +1,6 @@
 import React from 'react'
-import { Box, Popover, Stack, Typography } from '@mui/material'
+import { Box, IconButton, Popover, Stack, Tooltip, Typography } from '@mui/material'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import ResourceNameAutocomplete from '../components/ResourceNameAutocomplete'
 import { useResourceNameSuggestions } from '../hooks/useResourceNameSuggestions'
 import { useGmsStore } from '../state/GmsContext'
@@ -31,6 +32,11 @@ const EdgeResourceMappingPopover: React.FC<EdgeResourceMappingPopoverProps> = ({
         })
     }
 
+    function handleDelete() {
+        dispatch({ type: 'connection/remove', ids: [edgeId] })
+        onClose()
+    }
+
     return (
         <Popover
             open
@@ -41,9 +47,19 @@ const EdgeResourceMappingPopover: React.FC<EdgeResourceMappingPopoverProps> = ({
             transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         >
             <Box sx={{ p: 2, width: 320 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Resource Link
-                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography variant="subtitle2">Resource Link</Typography>
+                    <Tooltip title="Delete link">
+                        <IconButton
+                            aria-label="Delete link"
+                            size="small"
+                            onClick={handleDelete}
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Stack>
                 <Stack spacing={1.5}>
                     <ResourceNameAutocomplete
                         label="Source resource"

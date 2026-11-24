@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo } from 'react'
-import { Background, ConnectionMode, Controls, NodeProps, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react'
+import {
+    Background,
+    ConnectionMode,
+    Controls,
+    EdgeProps,
+    NodeProps,
+    ReactFlow,
+    useEdgesState,
+    useNodesState,
+} from '@xyflow/react'
 import '@xyflow/react/dist/base.css'
 import './gmsCanvas.css'
 import { ANCHOR_POSITIONS, CONNECTION_RADIUS, MAX_ZOOM, MIN_ZOOM } from '../constants'
@@ -54,7 +63,17 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({ onEditUnit, onEdgeClick, onOpenIm
         [onEditUnit, dispatch],
     )
 
-    const edgeTypes = useMemo(() => ({ connection: ConnectionEdge }), [])
+    const edgeTypes = useMemo(
+        () => ({
+            connection: (props: EdgeProps<ConnectionFlowEdge>) => (
+                <ConnectionEdge
+                    {...props}
+                    onDelete={(edgeId) => dispatch({ type: 'connection/remove', ids: [edgeId] })}
+                />
+            ),
+        }),
+        [dispatch],
+    )
 
     return (
         <ReactFlow<UnitFlowNode, ConnectionFlowEdge>

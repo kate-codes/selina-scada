@@ -4,6 +4,8 @@ import { Box, Card, Chip, IconButton, Stack, Typography } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import EditIcon from '@mui/icons-material/Edit'
 import { ANCHOR_POSITIONS, UNIT_TYPE_LABELS } from '../constants'
+import { IO_PROCESS_FIELD_CONFIG } from '../fieldConfig/ioProcessFieldConfig'
+import { STORAGE_FIELD_CONFIG } from '../fieldConfig/storageFieldConfig'
 import { UnitFlowNode } from '../flowSync/flowTypes'
 import { Unit } from '../schema/types'
 import PortHandle from './PortHandle'
@@ -20,11 +22,20 @@ function formatResourceList(rows: { resource: string; amount: number }[]): strin
 function renderSummary(unit: Unit): React.ReactNode {
     if (unit.type === 'ioProcess') {
         const { cycleTimeSeconds, workerCount, powerConsumptionKw, inputs, outputs } = unit.properties
+        // Each stat is only worth showing once it's been raised above its slider's floor —
+        // at the minimum it's just noise repeated across every freshly created unit.
+        const stats: string[] = []
+        if (cycleTimeSeconds > IO_PROCESS_FIELD_CONFIG.cycleTimeSeconds.min) stats.push(`Cycle ${cycleTimeSeconds}s`)
+        if (workerCount > IO_PROCESS_FIELD_CONFIG.workerCount.min) stats.push(`${workerCount} workers`)
+        if (powerConsumptionKw > IO_PROCESS_FIELD_CONFIG.powerConsumptionKw.min) stats.push(`${powerConsumptionKw} kW`)
+
         return (
             <Stack spacing={0.25}>
-                <Typography variant="caption" color="text.secondary">
-                    Cycle {cycleTimeSeconds}s · {workerCount} workers · {powerConsumptionKw} kW
-                </Typography>
+                {stats.length > 0 && (
+                    <Typography variant="caption" color="text.secondary">
+                        {stats.join(' · ')}
+                    </Typography>
+                )}
                 <Typography variant="caption" color="text.secondary" noWrap>
                     {formatResourceList(inputs) || 'no inputs'} {'→'} {formatResourceList(outputs) || 'no outputs'}
                 </Typography>
@@ -33,9 +44,18 @@ function renderSummary(unit: Unit): React.ReactNode {
     }
 
     const { capacity, haulerCount, overflowRule } = unit.properties
+    const stats: string[] = []
+    if (capacity.isInfinite) {
+        stats.push('Cap ∞')
+    } else if (capacity.maxUnits > STORAGE_FIELD_CONFIG.maxUnits.min) {
+        stats.push(`Cap ${capacity.maxUnits}`)
+    }
+    if (haulerCount > STORAGE_FIELD_CONFIG.haulerCount.min) stats.push(`${haulerCount} haulers`)
+    stats.push(overflowRule)
+
     return (
         <Typography variant="caption" color="text.secondary">
-            Cap {capacity.isInfinite ? '∞' : capacity.maxUnits} · {haulerCount} haulers · {overflowRule}
+            {stats.join(' · ')}
         </Typography>
     )
 }
