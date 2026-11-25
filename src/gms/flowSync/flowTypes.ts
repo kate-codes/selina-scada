@@ -8,5 +8,7 @@ export type UnitFlowNode = Node<UnitNodeData, 'unit'>
 
 export interface ConnectionEdgeData extends Record<string, unknown> {
     mapping: ConnectionResourceMapping | null
+    /** UI-local hover affordance for the inline delete button; never persisted to GMS. */
+    isHovered?: boolean
 }
 export type ConnectionFlowEdge = Edge<ConnectionEdgeData>

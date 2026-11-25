@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
     Background,
     ConnectionMode,
@@ -32,13 +32,36 @@ interface GmsCanvasProps {
     onEdgeClick: (edgeId: string, anchorPosition: { top: number; left: number }) => void
     onOpenImportExport: () => void
     onOpenNewUnit: () => void
+    activePopoverEdgeId: string | null
 }
 
-const GmsCanvas: React.FC<GmsCanvasProps> = ({ onEditUnit, onEdgeClick, onOpenImportExport, onOpenNewUnit }) => {
+const GmsCanvas: React.FC<GmsCanvasProps> = ({
+    onEditUnit,
+    onEdgeClick,
+    onOpenImportExport,
+    onOpenNewUnit,
+    activePopoverEdgeId,
+}) => {
     const { gms, dispatch } = useGmsStore()
 
     const [nodes, setNodes, onNodesChange] = useNodesState<UnitFlowNode>(toFlowNodes(gms.units))
     const [edges, setEdges, onEdgesChange] = useEdgesState<ConnectionFlowEdge>(toFlowEdges(gms.connections))
+    const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
+
+    // The inline delete "x" is a hover-only affordance, not tied to edge `selected` state —
+    // selection also flips true just from opening the resource-mapping popover (a click
+    // always both selects the edge and opens it), and selection can outlive the popover
+    // being closed, which left an orphaned delete button sitting on the canvas. Hovering
+    // away (or the popover being open for that edge) hides it instead.
+    const displayEdges = useMemo(
+        () =>
+            edges.map((edge) => {
+                const isHovered = edge.id === hoveredEdgeId && edge.id !== activePopoverEdgeId
+                if ((edge.data?.isHovered ?? false) === isHovered) return edge
+                return { ...edge, data: { mapping: edge.data?.mapping ?? null, isHovered } }
+            }),
+        [edges, hoveredEdgeId, activePopoverEdgeId],
+    )
 
     // GMS -> Layer 1 resync (import, dialog create/update, etc). Merge by id rather
     // than replacing wholesale, so unrelated nodes keep their selection/measured state.
@@ -78,7 +101,7 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({ onEditUnit, onEdgeClick, onOpenIm
     return (
         <ReactFlow<UnitFlowNode, ConnectionFlowEdge>
             nodes={nodes}
-            edges={edges}
+            edges={displayEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
@@ -112,6 +135,8 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({ onEditUnit, onEdgeClick, onOpenIm
             onEdgeClick={(event, edge) => {
                 onEdgeClick(edge.id, { top: event.clientY, left: event.clientX })
             }}
+            onEdgeMouseEnter={(_event, edge) => setHoveredEdgeId(edge.id)}
+            onEdgeMouseLeave={() => setHoveredEdgeId(null)}
             connectionMode={ConnectionMode.Loose}
             connectionRadius={CONNECTION_RADIUS}
             connectionLineComponent={CustomConnectionLine}

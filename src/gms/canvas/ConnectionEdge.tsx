@@ -12,6 +12,13 @@ export interface ConnectionEdgeProps extends EdgeProps<ConnectionFlowEdge> {
 const ARROW_LENGTH = 10
 const ARROW_HALF_WIDTH = 5
 
+// How far the delete button sits above the line/label. Widened below the default (20)
+// so the edge's own hover/click band comfortably covers the gap between the line and the
+// offset button — otherwise the mouse would cross a dead zone that isn't hoverable,
+// causing the button to vanish before the cursor reaches it.
+const DELETE_BUTTON_OFFSET_Y = 20
+const INTERACTION_WIDTH = 2 * DELETE_BUTTON_OFFSET_Y + 8
+
 // The path always meets the target handle head-on along that handle's axis, so the
 // arrow's direction is fully determined by which side of the node it's attached to.
 const ARROW_ANGLE_BY_TARGET_POSITION: Record<Position, number> = {
@@ -52,7 +59,11 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
 
     return (
         <>
-            <BaseEdge path={path} style={{ stroke: color, strokeWidth: selected ? 3 : 2 }} />
+            <BaseEdge
+                path={path}
+                interactionWidth={INTERACTION_WIDTH}
+                style={{ stroke: color, strokeWidth: selected ? 3 : 2 }}
+            />
             {/* Drawn manually (rather than via React Flow's SVG marker system) so it can
                 react to `selected` the same way the line itself does — markers resolved
                 through `defaultEdgeOptions` are static and ignore per-edge selection. */}
@@ -62,31 +73,64 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
                 transform={`translate(${targetX} ${targetY}) rotate(${arrowAngle})`}
             />
             <EdgeLabelRenderer>
-                <div
-                    className="gms-edge-controls"
-                    style={{
-                        position: 'absolute',
-                        transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                    }}
-                >
-                    {sourceResource && <span className="gms-edge-label">{sourceResource}</span>}
-                    {/* Only shown once selected — otherwise it sits exactly where a first
-                        click opens the resource-mapping popover, and a user aiming for
-                        that would instead delete the link. */}
-                    {selected && (
-                        <IconButton
-                            aria-label="Delete link"
-                            size="small"
-                            className="nodrag nopan gms-edge-delete-btn"
-                            onClick={(event) => {
-                                event.stopPropagation()
-                                onDelete(id)
+                {sourceResource ? (
+                    // Label + delete button share one row, centered on the line/midpoint —
+                    // the button sits to the right of the text rather than floating above
+                    // it, and only mounts on hover (see the no-label case below for why
+                    // hover rather than `selected` drives this).
+                    <div
+                        className="gms-edge-controls"
+                        style={{
+                            position: 'absolute',
+                            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+                        }}
+                    >
+                        <span className="gms-edge-label">{sourceResource}</span>
+                        {data?.isHovered && (
+                            <IconButton
+                                aria-label="Delete link"
+                                size="small"
+                                className="nodrag nopan gms-edge-delete-btn"
+                                onClick={(event) => {
+                                    event.stopPropagation()
+                                    onDelete(id)
+                                }}
+                            >
+                                <CloseIcon fontSize="inherit" />
+                            </IconButton>
+                        )}
+                    </div>
+                ) : (
+                    data?.isHovered && (
+                        // No label to sit beside, so the button is offset above the line
+                        // instead — not tied to `selected`, since selection also flips true
+                        // just from opening the resource-mapping popover (a click always
+                        // does both) and can outlive the popover closing, leaving this
+                        // stranded on the canvas. Hovering away, or the popover being open
+                        // for this edge, hides it (see GmsCanvas's `displayEdges`). Offset
+                        // rather than centered on the line so it's never what a click aimed
+                        // at the line itself actually lands on.
+                        <div
+                            className="gms-edge-controls"
+                            style={{
+                                position: 'absolute',
+                                transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - DELETE_BUTTON_OFFSET_Y}px)`,
                             }}
                         >
-                            <CloseIcon fontSize="inherit" />
-                        </IconButton>
-                    )}
-                </div>
+                            <IconButton
+                                aria-label="Delete link"
+                                size="small"
+                                className="nodrag nopan gms-edge-delete-btn"
+                                onClick={(event) => {
+                                    event.stopPropagation()
+                                    onDelete(id)
+                                }}
+                            >
+                                <CloseIcon fontSize="inherit" />
+                            </IconButton>
+                        </div>
+                    )
+                )}
             </EdgeLabelRenderer>
         </>
     )
