@@ -73,3 +73,21 @@
     border-color: #ef9a9a !important;
     color: #c62828 !important;
 }
+
+.gms-edge-toggle-btn {
+    pointer-events: auto;
+    width: 18px !important;
+    height: 18px !important;
+    padding: 0 !important;
+    background: white !important;
+    border: 1px solid #e0e0e0 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    color: #757575 !important;
+}
+
+.gms-edge-toggle-btn:hover {
+    background: #f3e5f5 !important;
+    border-color: #b388ff !important;
+    color: #7c43bd !important;
+}

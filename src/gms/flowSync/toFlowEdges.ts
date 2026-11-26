@@ -8,7 +8,7 @@ function toRfEdge(connection: Connection): ConnectionFlowEdge {
         sourceHandle: connection.sourceAnchor,
         target: connection.targetShapeId,
         targetHandle: connection.targetAnchor,
-        data: { mapping: connection.resourceMapping },
+        data: { mapping: connection.resourceMapping, gate: connection.gate },
     }
 }
 
@@ -26,6 +26,6 @@ export function mergeConnectionsIntoFlowEdges(
         if (!previous) {
             return toRfEdge(connection)
         }
-        return { ...previous, data: { mapping: connection.resourceMapping } }
+        return { ...previous, data: { mapping: connection.resourceMapping, gate: connection.gate } }
     })
 }

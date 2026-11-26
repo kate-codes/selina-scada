@@ -1,12 +1,20 @@
 import React from 'react'
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position, getSmoothStepPath } from '@xyflow/react'
-import { IconButton } from '@mui/material'
+import { IconButton, SvgIconProps } from '@mui/material'
+import AutoModeIcon from '@mui/icons-material/AutoMode'
+import CallSplitIcon from '@mui/icons-material/CallSplit'
+import CasinoIcon from '@mui/icons-material/Casino'
 import CloseIcon from '@mui/icons-material/Close'
+import ToggleOffIcon from '@mui/icons-material/ToggleOff'
+import ToggleOnIcon from '@mui/icons-material/ToggleOn'
+import TouchAppIcon from '@mui/icons-material/TouchApp'
 import { ConnectionFlowEdge } from '../flowSync/flowTypes'
 import { EDGE_IDLE_COLOR, EDGE_SELECTED_COLOR } from '../constants'
+import { GateConfig, GateKind } from '../schema/types'
 
 export interface ConnectionEdgeProps extends EdgeProps<ConnectionFlowEdge> {
     onDelete: (edgeId: string) => void
+    onGateToggle: (edgeId: string, nextGate: GateConfig) => void
 }
 
 const ARROW_LENGTH = 10
@@ -28,6 +36,48 @@ const ARROW_ANGLE_BY_TARGET_POSITION: Record<Position, number> = {
     [Position.Top]: 90,
 }
 
+const GATE_KIND_ICONS: Record<GateKind, React.ComponentType<SvgIconProps>> = {
+    interactive: TouchAppIcon,
+    random: CasinoIcon,
+    deterministic: CallSplitIcon,
+    automatic: AutoModeIcon,
+}
+
+function trimmedOrNull(value: string | undefined): string | null {
+    const trimmed = value?.trim()
+    return trimmed ? trimmed : null
+}
+
+// One segment per "variable of note" for the gate kind, skipping anything left unset
+// so an edge with a half-filled-out gate doesn't render empty/awkward segments.
+function gateLabelSegments(gate: GateConfig): string[] {
+    switch (gate.kind) {
+        case 'interactive':
+            return [gate.isOpen ? 'Open' : 'Closed']
+        case 'random':
+            return gate.outcomes
+                .filter((outcome) => outcome.resource.trim())
+                .map((outcome) => `${outcome.resource.trim()} ${outcome.weight}%`)
+        case 'automatic':
+            return [
+                ...gate.outcomes
+                    .filter((outcome) => outcome.resource.trim())
+                    .map((outcome) => `${outcome.resource.trim()} ${outcome.weight}%`),
+                `every ${gate.intervalSeconds}s`,
+            ]
+        case 'deterministic': {
+            const segments: string[] = []
+            const conditionResource = trimmedOrNull(gate.conditionResource)
+            if (conditionResource) segments.push(`${conditionResource} ${gate.operator} ${gate.threshold}`)
+            const thenResource = trimmedOrNull(gate.thenResource)
+            if (thenResource) segments.push(thenResource)
+            const elseResource = trimmedOrNull(gate.elseResource)
+            if (elseResource) segments.push(elseResource)
+            return segments
+        }
+    }
+}
+
 const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
     id,
     sourceX,
@@ -39,6 +89,7 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
     data,
     selected,
     onDelete,
+    onGateToggle,
 }) => {
     // midX/midY are the actual computed midpoint of the stepped path, not a linear
     // interpolation between source and target, so the label lands on the line itself
@@ -53,9 +104,30 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
         borderRadius: 12,
     })
 
-    const sourceResource = data?.mapping?.sourceResource?.trim()
+    const gate = data?.gate ?? null
     const color = selected ? EDGE_SELECTED_COLOR : EDGE_IDLE_COLOR
     const arrowAngle = ARROW_ANGLE_BY_TARGET_POSITION[targetPosition]
+
+    // A plain linker shows its (static) source and target resource. A gate redistributes
+    // whatever arrives rather than passing it to one fixed resource, so its label shows
+    // the source resource plus every variable of note from the gate's own mechanics
+    // instead of the now-inapplicable static target resource.
+    const segments = gate
+        ? [trimmedOrNull(data?.mapping?.sourceResource), ...gateLabelSegments(gate)].filter(
+              (segment): segment is string => segment !== null,
+          )
+        : [trimmedOrNull(data?.mapping?.sourceResource)].filter((segment): segment is string => segment !== null)
+
+    // Only meaningful once there's more than one segment to lay out — stack them to
+    // match a vertical (top/bottom-handled) connection instead of running them inline.
+    const isVerticalLabel = gate !== null && (targetPosition === Position.Top || targetPosition === Position.Bottom)
+
+    const GateIcon = gate ? GATE_KIND_ICONS[gate.kind] : null
+
+    // Only the interactive kind has a single player-flippable state — the other kinds
+    // are driven by probability/condition/timer, so there's nothing to toggle on hover.
+    const interactiveGate = gate?.kind === 'interactive' ? gate : null
+    const ToggleIcon = interactiveGate?.isOpen ? ToggleOnIcon : ToggleOffIcon
 
     return (
         <>
@@ -73,11 +145,15 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
                 transform={`translate(${targetX} ${targetY}) rotate(${arrowAngle})`}
             />
             <EdgeLabelRenderer>
-                {sourceResource ? (
+                {segments.length > 0 || GateIcon ? (
                     // Label + delete button share one row, centered on the line/midpoint —
-                    // the button sits to the right of the text rather than floating above
-                    // it, and only mounts on hover (see the no-label case below for why
-                    // hover rather than `selected` drives this).
+                    // the delete button sits to the right of the text and (for an interactive
+                    // gate) a player-flippable open/closed toggle sits to the left, both just
+                    // outside the text rather than floating above it, and both only mount on
+                    // hover (see the no-label case below for why hover rather than `selected`
+                    // drives this). The gate kind icon, when present, is appended to the end
+                    // of the label text itself (last line when stacked vertically) rather
+                    // than floating separately near the arrowhead.
                     <div
                         className="gms-edge-controls"
                         style={{
@@ -85,7 +161,49 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
                             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
                         }}
                     >
-                        <span className="gms-edge-label">{sourceResource}</span>
+                        {data?.isHovered && interactiveGate && (
+                            <IconButton
+                                aria-label={interactiveGate.isOpen ? 'Close gate' : 'Open gate'}
+                                size="small"
+                                className="nodrag nopan gms-edge-toggle-btn"
+                                onClick={(event) => {
+                                    event.stopPropagation()
+                                    onGateToggle(id, { ...interactiveGate, isOpen: !interactiveGate.isOpen })
+                                }}
+                            >
+                                <ToggleIcon fontSize="inherit" />
+                            </IconButton>
+                        )}
+                        {isVerticalLabel ? (
+                            <span
+                                className="gms-edge-label"
+                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                            >
+                                {segments.map((segment, index) => (
+                                    <span key={index}>
+                                        {segment}
+                                        {index < segments.length - 1 ? ' -' : ''}
+                                    </span>
+                                ))}
+                                {GateIcon && (
+                                    <span style={{ display: 'flex', color }}>
+                                        <GateIcon sx={{ fontSize: 14 }} />
+                                    </span>
+                                )}
+                            </span>
+                        ) : (
+                            <span
+                                className="gms-edge-label"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
+                                {segments.length > 0 && <span>{segments.join(' - ')}</span>}
+                                {GateIcon && (
+                                    <span style={{ display: 'flex', color }}>
+                                        <GateIcon sx={{ fontSize: 14 }} />
+                                    </span>
+                                )}
+                            </span>
+                        )}
                         {data?.isHovered && (
                             <IconButton
                                 aria-label="Delete link"

@@ -2,6 +2,7 @@ import {
     Connection,
     ConnectionResourceMapping,
     GameMechanicSchema,
+    GateConfig,
     IOProcessUnitProperties,
     Position2D,
     StorageUnitProperties,
@@ -17,6 +18,7 @@ export type GmsAction =
     | { type: 'connection/add'; connection: Connection }
     | { type: 'connection/remove'; ids: string[] }
     | { type: 'connection/setMapping'; id: string; mapping: ConnectionResourceMapping | null }
+    | { type: 'connection/setGate'; id: string; gate: GateConfig | null }
     | { type: 'viewport/commit'; viewport: Viewport }
     | { type: 'schema/replace'; schema: GameMechanicSchema }
 
@@ -70,6 +72,14 @@ export function gmsReducer(state: GameMechanicSchema, action: GmsAction): GameMe
                 ...state,
                 connections: state.connections.map((c) =>
                     c.id === action.id ? { ...c, resourceMapping: action.mapping } : c,
+                ),
+            }
+
+        case 'connection/setGate':
+            return {
+                ...state,
+                connections: state.connections.map((c) =>
+                    c.id === action.id ? { ...c, gate: action.gate } : c,
                 ),
             }
 

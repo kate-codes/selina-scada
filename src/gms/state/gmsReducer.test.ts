@@ -21,6 +21,7 @@ function makeConnection(id: string, sourceShapeId: string, targetShapeId: string
         targetShapeId,
         targetAnchor: 'left',
         resourceMapping: null,
+        gate: null,
     }
 }
 
@@ -63,5 +64,35 @@ describe('gmsReducer unit/remove', () => {
 
         expect(next.units).toEqual([makeUnit('unit-2')])
         expect(next.connections).toEqual(state.connections)
+    })
+})
+
+describe('gmsReducer connection/setGate', () => {
+    it('sets a gate config on the targeted connection, leaving others untouched', () => {
+        const state = {
+            ...createEmptySchema(),
+            units: [makeUnit('unit-1'), makeUnit('unit-2')],
+            connections: [makeConnection('conn-1', 'unit-1', 'unit-2'), makeConnection('conn-2', 'unit-1', 'unit-2')],
+        }
+        const gate: Connection['gate'] = { kind: 'interactive', isOpen: true }
+
+        const next = gmsReducer(state, { type: 'connection/setGate', id: 'conn-1', gate })
+
+        expect(next.connections.find((c) => c.id === 'conn-1')?.gate).toEqual(gate)
+        expect(next.connections.find((c) => c.id === 'conn-2')?.gate).toBeNull()
+    })
+
+    it('clears a gate back to null', () => {
+        const state = {
+            ...createEmptySchema(),
+            units: [makeUnit('unit-1'), makeUnit('unit-2')],
+            connections: [
+                { ...makeConnection('conn-1', 'unit-1', 'unit-2'), gate: { kind: 'interactive', isOpen: true } } as Connection,
+            ],
+        }
+
+        const next = gmsReducer(state, { type: 'connection/setGate', id: 'conn-1', gate: null })
+
+        expect(next.connections[0].gate).toBeNull()
     })
 })

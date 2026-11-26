@@ -90,6 +90,43 @@ export interface ConnectionResourceMapping {
     targetResource: string
 }
 
+export type GateKind = 'interactive' | 'random' | 'deterministic' | 'automatic'
+
+export interface GateOutcome {
+    resource: string
+    weight: number
+}
+
+export interface InteractiveGateConfig {
+    kind: 'interactive'
+    /** Editor-preview/default state; actual state is player-controlled at runtime. */
+    isOpen: boolean
+}
+
+export type GateConditionOperator = '>' | '>=' | '<' | '<=' | '=='
+
+export interface RandomGateConfig {
+    kind: 'random'
+    outcomes: GateOutcome[]
+}
+
+export interface DeterministicGateConfig {
+    kind: 'deterministic'
+    conditionResource: string
+    operator: GateConditionOperator
+    threshold: number
+    thenResource: string
+    elseResource: string
+}
+
+export interface AutomaticGateConfig {
+    kind: 'automatic'
+    intervalSeconds: number
+    outcomes: GateOutcome[]
+}
+
+export type GateConfig = InteractiveGateConfig | RandomGateConfig | DeterministicGateConfig | AutomaticGateConfig
+
 export interface Connection {
     id: string
     sourceShapeId: string
@@ -98,6 +135,8 @@ export interface Connection {
     targetAnchor: AnchorPosition
     /** Set via the edge-click popover; null until the user configures it. */
     resourceMapping: ConnectionResourceMapping | null
+    /** Non-null turns this arrow from a passive linker into a redistributing gate. */
+    gate: GateConfig | null
 }
 
 export interface GameMechanicSchema {

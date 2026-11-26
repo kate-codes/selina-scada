@@ -1,6 +1,8 @@
 import { DEFAULT_CANVAS_SIZE, DEFAULT_VIEWPORT } from '../constants'
 import {
     GameMechanicSchema,
+    GateConfig,
+    GateKind,
     IOProcessUnitProperties,
     Position2D,
     StorageUnitProperties,
@@ -40,6 +42,39 @@ export function createDefaultStorageProperties(): StorageUnitProperties {
         haulerCount: 0,
         overflowRule: 'haltProduction',
         stockpileFilters: [],
+    }
+}
+
+export function createDefaultGateConfig(kind: GateKind): GateConfig {
+    switch (kind) {
+        case 'interactive':
+            return { kind: 'interactive', isOpen: true }
+        case 'random':
+            return {
+                kind: 'random',
+                outcomes: [
+                    { resource: '', weight: 50 },
+                    { resource: '', weight: 50 },
+                ],
+            }
+        case 'deterministic':
+            return {
+                kind: 'deterministic',
+                conditionResource: '',
+                operator: '>',
+                threshold: 0,
+                thenResource: '',
+                elseResource: '',
+            }
+        case 'automatic':
+            return {
+                kind: 'automatic',
+                intervalSeconds: 10,
+                outcomes: [
+                    { resource: '', weight: 50 },
+                    { resource: '', weight: 50 },
+                ],
+            }
     }
 }
 

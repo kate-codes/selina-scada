@@ -58,7 +58,10 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
             edges.map((edge) => {
                 const isHovered = edge.id === hoveredEdgeId && edge.id !== activePopoverEdgeId
                 if ((edge.data?.isHovered ?? false) === isHovered) return edge
-                return { ...edge, data: { mapping: edge.data?.mapping ?? null, isHovered } }
+                return {
+                    ...edge,
+                    data: { mapping: edge.data?.mapping ?? null, gate: edge.data?.gate ?? null, isHovered },
+                }
             }),
         [edges, hoveredEdgeId, activePopoverEdgeId],
     )
@@ -92,6 +95,9 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
                 <ConnectionEdge
                     {...props}
                     onDelete={(edgeId) => dispatch({ type: 'connection/remove', ids: [edgeId] })}
+                    onGateToggle={(edgeId, nextGate) =>
+                        dispatch({ type: 'connection/setGate', id: edgeId, gate: nextGate })
+                    }
                 />
             ),
         }),
@@ -123,6 +129,7 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
                         targetShapeId: connection.target,
                         targetAnchor: connection.targetHandle,
                         resourceMapping: null,
+                        gate: null,
                     },
                 })
             }}

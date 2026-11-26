@@ -2,6 +2,10 @@ import { ANCHOR_POSITIONS } from '../constants'
 import {
     Connection,
     GameMechanicSchema,
+    GateConditionOperator,
+    GateConfig,
+    GateKind,
+    GateOutcome,
     IOProcessUnit,
     OverflowRule,
     ResourceAmount,
@@ -178,6 +182,87 @@ function isUnit(value: unknown, path: string, errors: string[]): value is Unit {
     return valid
 }
 
+const GATE_KINDS: GateKind[] = ['interactive', 'random', 'deterministic', 'automatic']
+const GATE_CONDITION_OPERATORS: GateConditionOperator[] = ['>', '>=', '<', '<=', '==']
+
+function isGateOutcome(value: unknown, path: string, errors: string[]): value is GateOutcome {
+    if (!isPlainObject(value)) {
+        errors.push(`${path} must be an object`)
+        return false
+    }
+    let valid = true
+    if (typeof value.resource !== 'string') {
+        errors.push(`${path}.resource must be a string`)
+        valid = false
+    }
+    if (!isFiniteNumber(value.weight) || value.weight < 0) {
+        errors.push(`${path}.weight must be a non-negative number`)
+        valid = false
+    }
+    return valid
+}
+
+function isGateOutcomeArray(value: unknown, path: string, errors: string[]): value is GateOutcome[] {
+    if (!Array.isArray(value)) {
+        errors.push(`${path} must be an array`)
+        return false
+    }
+    return value.map((item, index) => isGateOutcome(item, `${path}[${index}]`, errors)).every(Boolean)
+}
+
+function isGateConfig(value: unknown, path: string, errors: string[]): value is GateConfig {
+    if (!isPlainObject(value)) {
+        errors.push(`${path} must be an object`)
+        return false
+    }
+    if (!GATE_KINDS.includes(value.kind as GateKind)) {
+        errors.push(`${path}.kind must be one of ${GATE_KINDS.join(', ')}`)
+        return false
+    }
+    let valid = true
+    switch (value.kind as GateKind) {
+        case 'interactive':
+            if (typeof value.isOpen !== 'boolean') {
+                errors.push(`${path}.isOpen must be a boolean`)
+                valid = false
+            }
+            break
+        case 'random':
+            if (!isGateOutcomeArray(value.outcomes, `${path}.outcomes`, errors)) valid = false
+            break
+        case 'deterministic':
+            if (typeof value.conditionResource !== 'string') {
+                errors.push(`${path}.conditionResource must be a string`)
+                valid = false
+            }
+            if (!GATE_CONDITION_OPERATORS.includes(value.operator as GateConditionOperator)) {
+                errors.push(`${path}.operator must be one of ${GATE_CONDITION_OPERATORS.join(', ')}`)
+                valid = false
+            }
+            if (!isFiniteNumber(value.threshold)) {
+                errors.push(`${path}.threshold must be a number`)
+                valid = false
+            }
+            if (typeof value.thenResource !== 'string') {
+                errors.push(`${path}.thenResource must be a string`)
+                valid = false
+            }
+            if (typeof value.elseResource !== 'string') {
+                errors.push(`${path}.elseResource must be a string`)
+                valid = false
+            }
+            break
+        case 'automatic':
+            if (!isFiniteNumber(value.intervalSeconds) || value.intervalSeconds < 0) {
+                errors.push(`${path}.intervalSeconds must be a non-negative number`)
+                valid = false
+            }
+            if (!isGateOutcomeArray(value.outcomes, `${path}.outcomes`, errors)) valid = false
+            break
+    }
+    return valid
+}
+
 function isConnection(value: unknown, path: string, errors: string[]): value is Connection {
     if (!isPlainObject(value)) {
         errors.push(`${path} must be an object`)
@@ -214,6 +299,9 @@ function isConnection(value: unknown, path: string, errors: string[]): value is 
             errors.push(`${path}.resourceMapping must be null or { sourceResource: string, targetResource: string }`)
             valid = false
         }
+    }
+    if (value.gate !== null && !isGateConfig(value.gate, `${path}.gate`, errors)) {
+        valid = false
     }
     return valid
 }
