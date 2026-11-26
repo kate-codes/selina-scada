@@ -142,6 +142,8 @@ export interface Connection {
 export interface GameMechanicSchema {
     /** Bumped on breaking shape changes, enabling precise "unsupported version" errors. */
     schemaVersion: 1
+    /** User-facing title for this design; also used as the export filename. */
+    name: string
     viewSettings: ViewSettings
     units: Unit[]
     connections: Connection[]

@@ -17,6 +17,7 @@ import { mergeConnectionsIntoFlowEdges, toFlowEdges } from '../flowSync/toFlowEd
 import { mergeUnitsIntoFlowNodes, toFlowNodes } from '../flowSync/toFlowNodes'
 import { createId } from '../schema/defaults'
 import { AnchorPosition, Unit } from '../schema/types'
+import { useSimulation } from '../simulation/useSimulation'
 import { useGmsStore } from '../state/GmsContext'
 import CanvasToolbar from './CanvasToolbar'
 import ConnectionEdge from './ConnectionEdge'
@@ -33,6 +34,7 @@ interface GmsCanvasProps {
     onOpenImportExport: () => void
     onOpenNewUnit: () => void
     activePopoverEdgeId: string | null
+    isImportExportOpen: boolean
 }
 
 const GmsCanvas: React.FC<GmsCanvasProps> = ({
@@ -41,29 +43,60 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
     onOpenImportExport,
     onOpenNewUnit,
     activePopoverEdgeId,
+    isImportExportOpen,
 }) => {
     const { gms, dispatch } = useGmsStore()
+    const simulation = useSimulation(gms)
+
+    // Only worth offering Play once there's actually something to watch run.
+    const showPlayToggle = gms.units.some(
+        (unit) => unit.type === 'ioProcess' && unit.properties.outputs.length > 0 && unit.properties.cycleTimeSeconds > 0,
+    )
 
     const [nodes, setNodes, onNodesChange] = useNodesState<UnitFlowNode>(toFlowNodes(gms.units))
     const [edges, setEdges, onEdgesChange] = useEdgesState<ConnectionFlowEdge>(toFlowEdges(gms.connections))
     const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
 
+    // Live stock/buffer readouts, re-merged every simulation tick — doesn't touch
+    // nodeTypes identity (that stays stable below), just each node's own `data`, which
+    // React Flow re-renders in place without remounting.
+    const displayNodes = useMemo(
+        () =>
+            nodes.map((node) => ({
+                ...node,
+                data: {
+                    unit: node.data.unit,
+                    isPlaying: simulation.isPlaying,
+                    runtime: simulation.simulationState.units[node.id] ?? null,
+                },
+            })),
+        [nodes, simulation.simulationState, simulation.isPlaying],
+    )
+
     // The inline delete "x" is a hover-only affordance, not tied to edge `selected` state —
     // selection also flips true just from opening the resource-mapping popover (a click
     // always both selects the edge and opens it), and selection can outlive the popover
     // being closed, which left an orphaned delete button sitting on the canvas. Hovering
-    // away (or the popover being open for that edge) hides it instead.
+    // away (or the popover being open for that edge) hides it instead. Also carries the
+    // live flow reading and (for an interactive gate) the live open/closed override,
+    // re-merged every simulation tick the same way as the node data above.
     const displayEdges = useMemo(
         () =>
             edges.map((edge) => {
                 const isHovered = edge.id === hoveredEdgeId && edge.id !== activePopoverEdgeId
-                if ((edge.data?.isHovered ?? false) === isHovered) return edge
                 return {
                     ...edge,
-                    data: { mapping: edge.data?.mapping ?? null, gate: edge.data?.gate ?? null, isHovered },
+                    data: {
+                        mapping: edge.data?.mapping ?? null,
+                        gate: edge.data?.gate ?? null,
+                        isHovered,
+                        isPlaying: simulation.isPlaying,
+                        flow: simulation.simulationState.flows[edge.id] ?? null,
+                        liveGateOpen: simulation.simulationState.gates[edge.id]?.isOpen,
+                    },
                 }
             }),
-        [edges, hoveredEdgeId, activePopoverEdgeId],
+        [edges, hoveredEdgeId, activePopoverEdgeId, simulation.simulationState, simulation.isPlaying],
     )
 
     // GMS -> Layer 1 resync (import, dialog create/update, etc). Merge by id rather
@@ -83,10 +116,12 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
                     {...props}
                     onEdit={onEditUnit}
                     onDelete={(unit) => dispatch({ type: 'unit/remove', ids: [unit.id] })}
+                    onWorkerCountChange={simulation.setLiveWorkerCount}
+                    onHaulerCountChange={simulation.setLiveHaulerCount}
                 />
             ),
         }),
-        [onEditUnit, dispatch],
+        [onEditUnit, dispatch, simulation.setLiveWorkerCount, simulation.setLiveHaulerCount],
     )
 
     const edgeTypes = useMemo(
@@ -95,18 +130,25 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
                 <ConnectionEdge
                     {...props}
                     onDelete={(edgeId) => dispatch({ type: 'connection/remove', ids: [edgeId] })}
-                    onGateToggle={(edgeId, nextGate) =>
+                    onGateToggle={(edgeId, nextGate) => {
+                        // While playing, the toggle flips an ephemeral runtime copy instead
+                        // of the saved design (see schema/types.ts's InteractiveGateConfig
+                        // comment) — only when stopped does it edit the schema default.
+                        if (simulation.isPlaying) {
+                            if (nextGate.kind === 'interactive') simulation.setGateOpen(edgeId, nextGate.isOpen)
+                            return
+                        }
                         dispatch({ type: 'connection/setGate', id: edgeId, gate: nextGate })
-                    }
+                    }}
                 />
             ),
         }),
-        [dispatch],
+        [dispatch, simulation.isPlaying, simulation.setGateOpen],
     )
 
     return (
         <ReactFlow<UnitFlowNode, ConnectionFlowEdge>
-            nodes={nodes}
+            nodes={displayNodes}
             edges={displayEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
@@ -116,9 +158,11 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
                 dispatch({ type: 'unit/move', id: node.id, position: node.position })
             }}
             onNodesDelete={(deleted) => {
+                if (simulation.isPlaying) return
                 dispatch({ type: 'unit/remove', ids: deleted.map((node) => node.id) })
             }}
             onConnect={(connection) => {
+                if (simulation.isPlaying) return
                 if (!isAnchorPosition(connection.sourceHandle) || !isAnchorPosition(connection.targetHandle)) return
                 dispatch({
                     type: 'connection/add',
@@ -134,12 +178,14 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
                 })
             }}
             onEdgesDelete={(deleted) => {
+                if (simulation.isPlaying) return
                 dispatch({ type: 'connection/remove', ids: deleted.map((edge) => edge.id) })
             }}
             onMoveEnd={(_event, viewport) => {
                 dispatch({ type: 'viewport/commit', viewport })
             }}
             onEdgeClick={(event, edge) => {
+                if (simulation.isPlaying) return
                 onEdgeClick(edge.id, { top: event.clientY, left: event.clientX })
             }}
             onEdgeMouseEnter={(_event, edge) => setHoveredEdgeId(edge.id)}
@@ -151,12 +197,21 @@ const GmsCanvas: React.FC<GmsCanvasProps> = ({
             defaultViewport={gms.viewSettings.viewport}
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}
-            deleteKeyCode={['Backspace', 'Delete']}
+            deleteKeyCode={simulation.isPlaying ? [] : ['Backspace', 'Delete']}
             proOptions={{ hideAttribution: true }}
         >
             <Background />
             <Controls />
-            <CanvasToolbar onOpenImportExport={onOpenImportExport} onOpenNewUnit={onOpenNewUnit} />
+            <CanvasToolbar
+                schemaName={gms.name}
+                onRenameSchema={(name) => dispatch({ type: 'schema/rename', name })}
+                isNameEditable={!isImportExportOpen}
+                onOpenImportExport={onOpenImportExport}
+                onOpenNewUnit={onOpenNewUnit}
+                showPlayToggle={showPlayToggle}
+                isPlaying={simulation.isPlaying}
+                onTogglePlay={simulation.togglePlay}
+            />
         </ReactFlow>
     )
 }

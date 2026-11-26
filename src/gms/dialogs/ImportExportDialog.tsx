@@ -1,15 +1,38 @@
-import React, { useState } from 'react'
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
+import React, { useEffect, useRef, useState } from 'react'
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import DownloadIcon from '@mui/icons-material/Download'
 import UploadIcon from '@mui/icons-material/Upload'
 import { useReactFlow } from '@xyflow/react'
 import { parseAndValidateSchema } from '../schema/validate'
 import { useGmsStore } from '../state/GmsContext'
-import { copyTextToClipboard, downloadJsonFile, readUploadedJsonFile } from '../utils/clipboardAndFile'
+import { copyTextToClipboard, downloadJsonFile, readUploadedJsonFile, slugifyFilename } from '../utils/clipboardAndFile'
 
 interface ImportExportDialogProps {
     onClose: () => void
+}
+
+/** The JSON draft (`text`) is otherwise frozen from when the dialog opened, so a
+ *  rename through the live "Schema name" field above it would silently get reverted
+ *  by Apply — which commits `text`, not the live schema — once it goes stale. This
+ *  keeps the draft's embedded `name` following the live one, without touching
+ *  anything else the user may be mid-editing in the JSON itself. */
+function useSyncDraftName(liveName: string, setDraftText: React.Dispatch<React.SetStateAction<string>>) {
+    const lastSyncedNameRef = useRef(liveName)
+
+    useEffect(() => {
+        if (liveName === lastSyncedNameRef.current) return
+        lastSyncedNameRef.current = liveName
+        setDraftText((currentText) => {
+            try {
+                const parsed = JSON.parse(currentText)
+                parsed.name = liveName
+                return JSON.stringify(parsed, null, 2)
+            } catch {
+                return currentText // mid-invalid-edit; Apply will surface its own error
+            }
+        })
+    }, [liveName, setDraftText])
 }
 
 const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ onClose }) => {
@@ -18,6 +41,7 @@ const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ onClose }) => {
     const [text, setText] = useState(() => JSON.stringify(gms, null, 2))
     const [errors, setErrors] = useState<string[]>([])
     const [copied, setCopied] = useState(false)
+    useSyncDraftName(gms.name, setText)
 
     function handleApply() {
         const result = parseAndValidateSchema(text)
@@ -38,7 +62,7 @@ const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ onClose }) => {
     }
 
     function handleDownload() {
-        downloadJsonFile('gms-schema.json', text)
+        downloadJsonFile(`${slugifyFilename(gms.name, 'gms-schema')}.json`, text)
     }
 
     async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -55,6 +79,18 @@ const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ onClose }) => {
             <DialogTitle>Import / Export Schema</DialogTitle>
             <DialogContent>
                 <Stack spacing={1.5}>
+                    <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                            Schema name
+                        </Typography>
+                        <TextField
+                            value={gms.name}
+                            onChange={(event) => dispatch({ type: 'schema/rename', name: event.target.value })}
+                            placeholder="Untitled GMS"
+                            size="small"
+                            fullWidth
+                        />
+                    </Stack>
                     <TextField
                         value={text}
                         onChange={(event) => setText(event.target.value)}

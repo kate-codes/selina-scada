@@ -20,6 +20,7 @@ export type GmsAction =
     | { type: 'connection/setMapping'; id: string; mapping: ConnectionResourceMapping | null }
     | { type: 'connection/setGate'; id: string; gate: GateConfig | null }
     | { type: 'viewport/commit'; viewport: Viewport }
+    | { type: 'schema/rename'; name: string }
     | { type: 'schema/replace'; schema: GameMechanicSchema }
 
 function applyUnitUpdate(unit: Unit, name: string, properties: Unit['properties']): Unit {
@@ -85,6 +86,9 @@ export function gmsReducer(state: GameMechanicSchema, action: GmsAction): GameMe
 
         case 'viewport/commit':
             return { ...state, viewSettings: { ...state.viewSettings, viewport: action.viewport } }
+
+        case 'schema/rename':
+            return { ...state, name: action.name }
 
         case 'schema/replace':
             return action.schema

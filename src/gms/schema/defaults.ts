@@ -15,6 +15,7 @@ export function createId(prefix: string): string {
 export function createEmptySchema(): GameMechanicSchema {
     return {
         schemaVersion: 1,
+        name: 'Untitled GMS',
         viewSettings: {
             canvasSize: { ...DEFAULT_CANVAS_SIZE },
             viewport: { ...DEFAULT_VIEWPORT },

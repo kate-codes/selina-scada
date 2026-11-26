@@ -104,19 +104,34 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
         borderRadius: 12,
     })
 
-    const gate = data?.gate ?? null
-    const color = selected ? EDGE_SELECTED_COLOR : EDGE_IDLE_COLOR
+    // While playing, an interactive gate's open/closed state is player-controlled at
+    // runtime (see schema/types.ts's InteractiveGateConfig comment) rather than the
+    // schema default — substituting it here means every downstream read (label,
+    // icon, toggle) automatically reflects the live value without further branching.
+    const schemaGate = data?.gate ?? null
+    const liveIsOpen = data?.isPlaying ? data?.liveGateOpen : undefined
+    const gate =
+        schemaGate?.kind === 'interactive' && liveIsOpen !== undefined
+            ? { ...schemaGate, isOpen: liveIsOpen }
+            : schemaGate
+
+    // A non-zero flow this tick gets a brief highlight plus a "+amount" label segment,
+    // only while actually playing — paused/stopped always shows the static design view.
+    const flow = data?.isPlaying ? (data?.flow ?? null) : null
+    const isFlowing = Boolean(flow && flow.amount > 0)
+
+    const color = selected || isFlowing ? EDGE_SELECTED_COLOR : EDGE_IDLE_COLOR
     const arrowAngle = ARROW_ANGLE_BY_TARGET_POSITION[targetPosition]
 
     // A plain linker shows its (static) source and target resource. A gate redistributes
     // whatever arrives rather than passing it to one fixed resource, so its label shows
     // the source resource plus every variable of note from the gate's own mechanics
     // instead of the now-inapplicable static target resource.
-    const segments = gate
-        ? [trimmedOrNull(data?.mapping?.sourceResource), ...gateLabelSegments(gate)].filter(
-              (segment): segment is string => segment !== null,
-          )
-        : [trimmedOrNull(data?.mapping?.sourceResource)].filter((segment): segment is string => segment !== null)
+    const segments = [
+        trimmedOrNull(data?.mapping?.sourceResource),
+        ...(gate ? gateLabelSegments(gate) : []),
+        isFlowing ? `+${Math.round(flow!.amount * 10) / 10}` : null,
+    ].filter((segment): segment is string => segment !== null)
 
     // Only meaningful once there's more than one segment to lay out — stack them to
     // match a vertical (top/bottom-handled) connection instead of running them inline.

@@ -318,6 +318,15 @@ export function isGameMechanicSchema(data: unknown, errors: string[]): data is G
         valid = false
     }
 
+    if (data.name === undefined) {
+        // Backward-compatible default for schemas exported before `name` existed,
+        // rather than breaking every previously-exported file on re-import.
+        data.name = ''
+    } else if (typeof data.name !== 'string') {
+        errors.push('name must be a string')
+        valid = false
+    }
+
     const viewSettings = data.viewSettings
     if (!isPlainObject(viewSettings)) {
         errors.push('viewSettings must be an object')

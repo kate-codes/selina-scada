@@ -28,6 +28,7 @@ const GmsEditorPageInner: React.FC = () => {
                 onOpenImportExport={() => setActiveOverlay({ kind: 'importExport' })}
                 onOpenNewUnit={() => setActiveOverlay({ kind: 'unitDialog', editingUnit: null })}
                 activePopoverEdgeId={activeOverlay.kind === 'edgePopover' ? activeOverlay.edgeId : null}
+                isImportExportOpen={activeOverlay.kind === 'importExport'}
             />
 
             {activeOverlay.kind === 'unitDialog' && (
