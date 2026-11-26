@@ -4,7 +4,7 @@ import { IconButton, SvgIconProps } from '@mui/material'
 import AutoModeIcon from '@mui/icons-material/AutoMode'
 import CallSplitIcon from '@mui/icons-material/CallSplit'
 import CasinoIcon from '@mui/icons-material/Casino'
-import CloseIcon from '@mui/icons-material/Close'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import ToggleOffIcon from '@mui/icons-material/ToggleOff'
 import ToggleOnIcon from '@mui/icons-material/ToggleOn'
 import TouchAppIcon from '@mui/icons-material/TouchApp'
@@ -214,7 +214,7 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
                                     onDelete(id)
                                 }}
                             >
-                                <CloseIcon fontSize="inherit" />
+                                <DeleteOutlineIcon fontSize="inherit" />
                             </IconButton>
                         )}
                     </div>
@@ -244,7 +244,7 @@ const ConnectionEdge: React.FC<ConnectionEdgeProps> = ({
                                     onDelete(id)
                                 }}
                             >
-                                <CloseIcon fontSize="inherit" />
+                                <DeleteOutlineIcon fontSize="inherit" />
                             </IconButton>
                         </div>
                     )

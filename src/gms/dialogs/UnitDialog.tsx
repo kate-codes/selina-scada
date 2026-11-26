@@ -42,7 +42,10 @@ const UnitDialog: React.FC<UnitDialogProps> = ({ editingUnit, onClose }) => {
 
         const position = editingUnit
             ? editingUnit.position
-            : nextStaggeredPosition(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }))
+            : nextStaggeredPosition({
+                  topLeft: screenToFlowPosition({ x: 0, y: 0 }),
+                  bottomRight: screenToFlowPosition({ x: window.innerWidth, y: window.innerHeight }),
+              })
         const unit = controller.buildUnit(position)
         if (!unit) return
 

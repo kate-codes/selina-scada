@@ -176,7 +176,10 @@ const EdgeResourceMappingPopover: React.FC<EdgeResourceMappingPopoverProps> = ({
                             aria-label="Delete link"
                             size="small"
                             onClick={handleDelete}
-                            sx={{ color: 'text.secondary' }}
+                            sx={{
+                                color: 'text.secondary',
+                                '&:hover': { backgroundColor: '#ffebee', color: '#c62828' },
+                            }}
                         >
                             <DeleteOutlineIcon fontSize="small" />
                         </IconButton>
